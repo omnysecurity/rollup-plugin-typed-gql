@@ -1,0 +1,14 @@
+query Starship($id: ID!) {
+	starship(id: $id) {
+		name
+		cargoCapacity
+		starshipClass
+		hyperdriveRating
+		maxAtmospheringSpeed
+		pilotConnection {
+			pilots {
+				name
+			}
+		}
+	}
+}
