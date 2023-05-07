@@ -1,6 +1,6 @@
 {
 	"name": "rollup-plugin-typed-gql",
-	"version": "0.0.1",
+	"version": "0.1.0",
 	"type": "module",
 	"description": "Simple, unobtrusive and fully type safe GraphQL plugin.",
 	"homepage": "https://github.com/boyeborg/rollup-plugin-typed-gql#readme",
