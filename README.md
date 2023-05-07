@@ -27,7 +27,7 @@ query AllStarships {
 Install using your favorite package manager:
 
 ```
-npm i -D rollup-plugin-typed-gql
+npm i -D rollup-plugin-typed-gql @graphql-typed-document-node/core
 ```
 
 Add plugin to your rollup or vite plugin:

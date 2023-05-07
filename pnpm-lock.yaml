@@ -16,9 +16,6 @@ dependencies:
   '@graphql-tools/load':
     specifier: ^7.8.14
     version: 7.8.14(graphql@16.6.0)
-  '@graphql-typed-document-node/core':
-    specifier: ^3.2.0
-    version: 3.2.0(graphql@16.6.0)
   chokidar:
     specifier: ^3.5.3
     version: 3.5.3
@@ -33,6 +30,9 @@ devDependencies:
   '@changesets/cli':
     specifier: ^2.26.1
     version: 2.26.1
+  '@graphql-typed-document-node/core':
+    specifier: ^3.2.0
+    version: 3.2.0(graphql@16.6.0)
   '@playwright/test':
     specifier: ^1.28.1
     version: 1.33.0
