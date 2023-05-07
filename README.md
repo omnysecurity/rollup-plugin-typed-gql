@@ -1,6 +1,6 @@
 # rollup-plugin-typed-gql
 
-Simple, out of your way, and fully type safe GraphQL plugin.
+Simple, unobtrusive and fully type safe GraphQL plugin.
 
 ```js
 import { request } from "graphql-request";

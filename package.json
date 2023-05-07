@@ -2,6 +2,16 @@
 	"name": "rollup-plugin-typed-gql",
 	"version": "0.0.1",
 	"type": "module",
+	"description": "Simple, unobtrusive and fully type safe GraphQL plugin.",
+	"homepage": "https://github.com/boyeborg/rollup-plugin-typed-gql#readme",
+	"bugs": {
+		"url": "https://github.com/boyeborg/rollup-plugin-typed-gql/issues"
+	},
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/boyeborg/rollup-plugin-typed-gql.git"
+	},
+	"license": "MIT",
 	"keywords": [
 		"rollup-plugin",
 		"vite-plugin",
@@ -29,6 +39,7 @@
 		"!dist/**/*.spec.*"
 	],
 	"types": "./dist/index.d.ts",
+	"main": "./dist/index.js",
 	"exports": {
 		".": {
 			"types": "./dist/index.d.ts",
