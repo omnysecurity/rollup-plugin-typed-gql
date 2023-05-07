@@ -1,6 +1,6 @@
 import { FSWatcher } from "chokidar";
 import { mkdir, readFile, rm, unlink, writeFile } from "fs/promises";
-import { dirname, resolve } from "path";
+import { dirname, join, resolve } from "path";
 import {
 	loadSchema,
 	noop,
@@ -10,24 +10,40 @@ import {
 	virtualDeclarationPath,
 } from "./helpers.js";
 import { GraphQLError } from "graphql";
-import { normalizePath } from "vite";
-
-// TODO: Add best practices options
 
 /**
- * Vite Plugin for type safe use of imported GraphQL queries.
- *
- * @returns {import("vite").Plugin}
+ * @typedef {Object} PluginOptions
+ * @property {string} [schema]
+ * Path to your GraphQL schema. Default "schema.graphql".
+ * @property {string} [searchDir]
+ * Path to directory to search for GraphQL files. Default "src".
+ * @property {`.${string}`[]} [extensions]
+ * Extension used for your GraphQL files. Default [".gql", ".graphql"].
+ * @property {string} [virtualDir]
+ * Directory to store generated type declarations. If you want your type
+ * declarations next to your GraphQL files pass ".". Default ".gql".
+ * @property {string} [baseDir]
+ * Base directory to search for files. Defaults to the current working
+ * directory (`process.cwd()`).
  */
-export default async function vitePluginTypedGql() {
-	const virtualBase = ".gql";
-	const extension = ".gql";
-	const cwd = process.cwd();
-	const schemaPath = "./schema.graphql";
+
+/**
+ * Rollup Plugin for type safe use of imported GraphQL queries.
+ *
+ * @param {PluginOptions} [options]
+ * @returns {import("rollup").Plugin}
+ */
+export default function typedGql(options) {
+	const schemaPath = options?.schema ?? "schema.graphql";
+	const searchDir = options?.searchDir ?? "src";
+	const virtualDir = options?.virtualDir ?? ".gql";
+	const extensions = options?.extensions ?? [".gql", ".graphql"];
+	const cwd = options?.baseDir ?? process.cwd();
 
 	/** @type {import("graphql").DocumentNode} */
 	let schema;
-	const watcher = new FSWatcher({ cwd });
+	const searchGlobs = extensions.map((ext) => join(searchDir, "**", `*${ext}`));
+	const watcher = new FSWatcher({ cwd, ignored: schemaPath });
 	const initialGeneration = new Promise((resolve, reject) => {
 		watcher.on("ready", resolve);
 		watcher.on("error", reject);
@@ -37,7 +53,7 @@ export default async function vitePluginTypedGql() {
 	const generateTypeDeclaration = async (path) => {
 		const fileContent = await readFile(path, "utf-8");
 		const declaration = await queryToTypeDeclaration(fileContent, schema);
-		const outputPath = virtualDeclarationPath(path, virtualBase);
+		const outputPath = virtualDeclarationPath(path, virtualDir);
 		await mkdir(dirname(outputPath), { recursive: true });
 		await writeFile(outputPath, declaration);
 	};
@@ -47,9 +63,9 @@ export default async function vitePluginTypedGql() {
 
 		async buildStart() {
 			schema = await loadSchema(schemaPath);
-			await rm(resolve(cwd, virtualBase), { recursive: true }).catch(noop);
+			await rm(resolve(cwd, virtualDir), { recursive: true }).catch(noop);
 			watcher
-				.add(`src/**/*${extension}`)
+				.add(searchGlobs)
 				.on("add", (path) =>
 					generateTypeDeclaration(path).catch(() =>
 						this.warn(`Failed to parse GQL file: ${path}`)
@@ -68,14 +84,14 @@ export default async function vitePluginTypedGql() {
 		},
 
 		async transform(code, id) {
-			if (!id.endsWith(extension)) return null;
+			if (!extensions.some((ext) => id.endsWith(ext))) return null;
 			const documentNodeFile = await queryToDocumentNode(code, schema).catch(
 				(err) => {
 					let reason = "Unknown error";
 					if (err instanceof GraphQLError) {
 						reason = err.message;
 					}
-					this.warn(`Failed to parse "${normalizePath(id)}": ${reason}`);
+					this.warn(`Failed to parse "${id}": ${reason}`);
 					return `throw new Error("Failed to parse GQL file.")`;
 				}
 			);

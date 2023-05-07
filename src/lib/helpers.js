@@ -40,7 +40,7 @@ export async function queryToTypeDeclaration(src, schema) {
 		documents: [documentSource],
 		schema,
 		config: {},
-		filename: "./node_modules/.vite/generated.ts",
+		filename: "./node_modules/.generated.ts",
 		plugins: [
 			{
 				typescriptOperations: {
@@ -92,7 +92,7 @@ export async function queryToDocumentNode(src, schema) {
 		documents: [documentSource],
 		schema,
 		config: {},
-		filename: "./node_modules/.vite/generated.ts",
+		filename: "./node_modules/.generated.ts",
 		plugins: [
 			{
 				typedDocumentNode: {
