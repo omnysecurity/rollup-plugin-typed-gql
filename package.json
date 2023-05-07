@@ -1,5 +1,5 @@
 {
-	"name": "vite-plugin-typed-gql",
+	"name": "rollup-plugin-typed-gql",
 	"version": "0.0.1",
 	"type": "module",
 	"scripts": {

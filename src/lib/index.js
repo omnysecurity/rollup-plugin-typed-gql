@@ -43,7 +43,7 @@ export default async function vitePluginTypedGql() {
 	};
 
 	return {
-		name: "vite-plugin-typed-gql",
+		name: "rollup-plugin-typed-gql",
 
 		async buildStart() {
 			schema = await loadSchema(schemaPath);
