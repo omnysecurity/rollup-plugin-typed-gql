@@ -78,9 +78,14 @@ export default function typedGql(options) {
 							this.warn(`Failed to parse GQL file: ${path}`)
 						)
 					)
-					.on("unlink", (path) =>
-						unlink(virtualDeclarationPath(path)).catch(noop)
-					);
+					.on("unlink", (path) => {
+						try {
+							const oldPath = virtualDeclarationPath(path);
+							unlink(virtualDeclarationPath(oldPath)).catch(noop);
+						} catch {
+							/* noop */
+						}
+					});
 		},
 
 		async transform(code, id) {
