@@ -84,6 +84,10 @@ typedGql({
    */
   schema: "schema.graphql",
   /**
+   * Custom scalars.
+   */
+  scalars: {},
+  /**
    * Path to directory to search for GraphQL files.
    */
   searchDir: "src",
