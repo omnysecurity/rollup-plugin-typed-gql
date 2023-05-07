@@ -1,58 +1,104 @@
-# create-svelte
+# rollup-plugin-typed-gql
 
-Everything you need to build a Svelte library, powered by [`create-svelte`](https://github.com/sveltejs/kit/tree/master/packages/create-svelte).
+Simple, out of your way, and fully type safe GraphQL plugin.
 
-Read more about creating a library [in the docs](https://kit.svelte.dev/docs/packaging).
+```js
+import { request } from "graphql-request";
+import { AllStarships } from "./query.gql";
 
-## Creating a project
-
-If you're seeing this, you've probably already done this step. Congrats!
-
-```bash
-# create a new project in the current directory
-npm create svelte@latest
-
-# create a new project in my-app
-npm create svelte@latest my-app
+const endpoint = "https://swapi-graphql.eskerda.vercel.app";
+const result = await request(endpoint, AllStarships);
+//      ^ { allStarships: { starships: { name: string }[] } }
 ```
 
-## Developing
-
-Once you've created a project and installed dependencies with `npm install` (or `pnpm install` or `yarn`), start a development server:
-
-```bash
-npm run dev
-
-# or start the server and open the app in a new browser tab
-npm run dev -- --open
+```graphql
+# query.graphql
+query AllStarships {
+	allStarships {
+		starships {
+			name
+		}
+	}
+}
 ```
 
-Everything inside `src/lib` is part of your library, everything inside `src/routes` can be used as a showcase or preview app.
+## Usage
 
-## Building
+Install using your favorite package manager:
 
-To build your library:
-
-```bash
-npm run package
+```
+npm i -D rollup-plugin-typed-gql
 ```
 
-To create a production version of your showcase app:
+Add plugin to your rollup or vite plugin:
 
-```bash
-npm run build
+```js
+import typedGql from "rollup-plugin-typed-gql";
+
+export default defineConfig({
+	plugins: [typedGql()],
+});
 ```
 
-You can preview the production build with `npm run preview`.
+Enable `allowArbitraryExtensions` and add `".gql"` to `rootDirs` in your
+`tsconfig.json`:
 
-> To deploy your app, you may need to install an [adapter](https://kit.svelte.dev/docs/adapters) for your target environment.
+```json
+// tsconfig.json
+{
+	"compilerOptions": {
+		"rootDirs": [".", ".gql"],
+		"allowArbitraryExtensions": true
+		// rest of your configuration
+	}
+}
+```
 
-## Publishing
+If you use a framework or other tools that also take advantage of typescripts
+`rootDirs` (like SvelteKit), you need to make sure you add their virtual
+folders manually. For SvelteKit this will look like:
+`"rootDirs": [".", ".svelte-kit/types", ".gql"]`.
 
-Go into the `package.json` and give your package the desired name through the `"name"` option. Also consider adding a `"license"` field and point it to a `LICENSE` file which you can create from a template (one popular option is the [MIT license](https://opensource.org/license/mit/)).
+### Recommendations
 
-To publish your library to [npm](https://www.npmjs.com):
+To get most out of your GraphQL setup, we recommend installing the
+[GraphQL language server VS Code plugin](https://marketplace.visualstudio.com/items?itemName=GraphQL.vscode-graphql)
+(or a similar language server integration if you're not rocking vscode).
 
-```bash
-npm publish
+A current limitation is that you have to have your GraphQL schema locally. If
+you don't have that, it can easily be extracted by running:
+
+```
+npx get-graphql-schema https://your-schema-url > schema.graphql
+```
+
+## Configuration
+
+All configuration options are optional. This configuration is equivalent to the
+defaults you get if you don't provide any options.
+
+```js
+typedGql({
+	/**
+	 * Path to your GraphQL schema.
+	 */
+	schema: "schema.graphql",
+	/**
+	 * Path to directory to search for GraphQL files.
+	 */
+	searchDir: "src",
+	/**
+	 * Extension used for your GraphQL files.
+	 */
+	extensions: [".gql", ".graphql"],
+	/**
+	 * Directory to store generated type declarations. If you want your type
+	 * declarations next to your GraphQL files pass `"."`.
+	 */
+	virtualDir: ".gql",
+	/**
+	 * Base directory to search for files.
+	 */
+	baseDir: process.cwd(),
+});
 ```
