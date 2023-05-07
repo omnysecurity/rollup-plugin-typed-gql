@@ -31,10 +31,12 @@ export async function loadSchema(path) {
  * GraphQL query file content to generate typescript declarations from.
  * @param {import("graphql").DocumentNode} schema
  * GraphQL schema to base type declaration on.
+ * @param {Record<string, string>} scalars
+ * Custom scalars.
  * @returns
  * The typescript declaration with typed document nodes for each operation.
  */
-export async function queryToTypeDeclaration(src, schema) {
+export async function queryToTypeDeclaration(src, schema, scalars) {
 	const [documentSource] = await loadDocuments(src, { loaders: [] });
 	const code = await codegen({
 		documents: [documentSource],
@@ -46,6 +48,7 @@ export async function queryToTypeDeclaration(src, schema) {
 				typescriptOperations: {
 					arrayInputCoercion: false,
 					defaultScalarType: "unknown",
+					scalars,
 				},
 			},
 		],

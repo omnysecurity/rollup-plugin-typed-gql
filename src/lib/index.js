@@ -15,6 +15,8 @@ import { GraphQLError } from "graphql";
  * @typedef {Object} PluginOptions
  * @property {string} [schema]
  * Path to your GraphQL schema. Default "schema.graphql".
+ * @property {Record<string, string>} [scalars]
+ * Custom scalars. Default {}.
  * @property {string} [searchDir]
  * Path to directory to search for GraphQL files. Default "src".
  * @property {`.${string}`[]} [extensions]
@@ -35,6 +37,7 @@ import { GraphQLError } from "graphql";
  */
 export default function typedGql(options) {
 	const schemaPath = options?.schema ?? "schema.graphql";
+	const scalars = options?.scalars ?? {};
 	const searchDir = options?.searchDir ?? "src";
 	const virtualDir = options?.virtualDir ?? ".gql";
 	const extensions = options?.extensions ?? [".gql", ".graphql"];
@@ -52,7 +55,11 @@ export default function typedGql(options) {
 	/** @type {(path: string) => Promise<void>} */
 	const generateTypeDeclaration = async (path) => {
 		const fileContent = await readFile(path, "utf-8");
-		const declaration = await queryToTypeDeclaration(fileContent, schema);
+		const declaration = await queryToTypeDeclaration(
+			fileContent,
+			schema,
+			scalars
+		);
 		const outputPath = virtualDeclarationPath(path, virtualDir);
 		await mkdir(dirname(outputPath), { recursive: true });
 		await writeFile(outputPath, declaration);
