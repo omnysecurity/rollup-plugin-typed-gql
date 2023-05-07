@@ -14,11 +14,11 @@ const result = await request(endpoint, AllStarships);
 ```graphql
 # query.graphql
 query AllStarships {
-	allStarships {
-		starships {
-			name
-		}
-	}
+  allStarships {
+    starships {
+      name
+    }
+  }
 }
 ```
 
@@ -36,21 +36,21 @@ Add plugin to your rollup or vite plugin:
 import typedGql from "rollup-plugin-typed-gql";
 
 export default defineConfig({
-	plugins: [typedGql()],
+  plugins: [typedGql()],
 });
 ```
 
 Enable `allowArbitraryExtensions` and add `".gql"` to `rootDirs` in your
 `tsconfig.json`:
 
-```json
+```jsonc
 // tsconfig.json
 {
-	"compilerOptions": {
-		"rootDirs": [".", ".gql"],
-		"allowArbitraryExtensions": true
-		// rest of your configuration
-	}
+  "compilerOptions": {
+    "rootDirs": [".", ".gql"],
+    "allowArbitraryExtensions": true
+    // rest of your configuration
+  }
 }
 ```
 
@@ -75,30 +75,30 @@ npx get-graphql-schema https://your-schema-url > schema.graphql
 ## Configuration
 
 All configuration options are optional. This configuration is equivalent to the
-defaults you get if you don't provide any options.
+defaults you get if you don't provide any options:
 
 ```js
 typedGql({
-	/**
-	 * Path to your GraphQL schema.
-	 */
-	schema: "schema.graphql",
-	/**
-	 * Path to directory to search for GraphQL files.
-	 */
-	searchDir: "src",
-	/**
-	 * Extension used for your GraphQL files.
-	 */
-	extensions: [".gql", ".graphql"],
-	/**
-	 * Directory to store generated type declarations. If you want your type
-	 * declarations next to your GraphQL files pass `"."`.
-	 */
-	virtualDir: ".gql",
-	/**
-	 * Base directory to search for files.
-	 */
-	baseDir: process.cwd(),
+  /**
+   * Path to your GraphQL schema.
+   */
+  schema: "schema.graphql",
+  /**
+   * Path to directory to search for GraphQL files.
+   */
+  searchDir: "src",
+  /**
+   * Extension used for your GraphQL files.
+   */
+  extensions: [".gql", ".graphql"],
+  /**
+   * Directory to store generated type declarations. If you want your type
+   * declarations next to your GraphQL files pass `"."`.
+   */
+  virtualDir: ".gql",
+  /**
+   * Base directory to search for files.
+   */
+  baseDir: process.cwd(),
 });
 ```
