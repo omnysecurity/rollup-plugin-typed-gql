@@ -23,5 +23,13 @@ jobs:
           node-version: "18.x"
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm lint
-      - run: pnpm test
+      - run: pnpm check
+      - run: pnpm test:unit
+      - run: npx playwright install --with-deps
+      - run: pnpm test:e2e
+      - uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 30
