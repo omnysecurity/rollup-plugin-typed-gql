@@ -20,6 +20,7 @@
 		"types",
 		"typescript"
 	],
+	"packageManager": "pnpm@8.4.0",
 	"scripts": {
 		"dev": "vite dev",
 		"build": "vite build && npm run package",
@@ -27,11 +28,10 @@
 		"package": "svelte-kit sync && svelte-package && publint",
 		"release": "npm run pacakge && changeset publish",
 		"generate": "get-graphql-schema https://swapi-graphql.eskerda.vercel.app > schema.graphql",
-		"check": "svelte-kit sync && svelte-check --tsconfig ./jsconfig.json",
+		"lint": "svelte-kit sync && svelte-check --tsconfig ./jsconfig.json && prettier --plugin-search-dir . --check . && eslint .",
 		"test": "npm run test:unit && npm run test:e2e",
 		"test:e2e": "playwright test",
 		"test:unit": "vitest",
-		"lint": "prettier --plugin-search-dir . --check . && eslint .",
 		"format": "prettier --plugin-search-dir . --write ."
 	},
 	"files": [
