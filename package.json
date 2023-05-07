@@ -31,7 +31,7 @@
 		"check": "svelte-kit sync && svelte-check --tsconfig ./jsconfig.json && prettier --plugin-search-dir . --check . && eslint .",
 		"test": "npm run test:unit && npm run test:e2e",
 		"test:e2e": "playwright test",
-		"test:unit": "vitest",
+		"test:unit": "vitest run",
 		"format": "prettier --plugin-search-dir . --write ."
 	},
 	"files": [
