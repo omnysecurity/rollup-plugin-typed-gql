@@ -17,16 +17,12 @@ jobs:
       pull-requests: write
     steps:
       - uses: actions/checkout@v3
-
       - uses: pnpm/action-setup@v2
-
       - uses: actions/setup-node@v3
         with:
           node-version: 18.x
           cache: pnpm
-
       - run: pnpm install --frozen-lockfile
-
       - uses: changesets/action@v1
         id: changesets
         with:
