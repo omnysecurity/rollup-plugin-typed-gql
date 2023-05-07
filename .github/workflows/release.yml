@@ -10,7 +10,7 @@ concurrency: ${{ github.workflow }}-${{ github.ref }}
 jobs:
   release:
     name: Release
-    if: github.repository == 'omnysecurity/vite-plugin-wasm-esm'
+    if: github.repository == 'boyeborg/rollup-plugin-typed-gql'
     runs-on: ubuntu-latest
     permissions:
       contents: write
