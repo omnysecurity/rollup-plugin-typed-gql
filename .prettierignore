@@ -4,6 +4,7 @@ node_modules
 /.svelte-kit
 /dist
 /.gql
+/.changeset
 .env
 .env.*
 !.env.example
