@@ -1,11 +1,12 @@
 import { codegen } from "@graphql-codegen/core";
+import * as typedDocumentNodePlugin from "@graphql-codegen/typed-document-node";
 import { EXACT_SIGNATURE } from "@graphql-codegen/typescript";
 import * as typescriptOperationsPlugin from "@graphql-codegen/typescript-operations";
-import * as typedDocumentNodePlugin from "@graphql-codegen/typed-document-node";
 import { loadDocuments } from "@graphql-tools/load";
+import { transform } from "esbuild";
 import { readFile } from "fs/promises";
 import { Kind, parse } from "graphql";
-import { transform } from "esbuild";
+import { extname, join } from "path";
 
 /**
  * Load GraphQL schema from disk.
@@ -107,6 +108,51 @@ export async function queryToDocumentNode(src, schema) {
 	const transformed = await transform(code, { loader: "ts" });
 	return transformed.code;
 }
+
+/**
+ * Extract the correct (virtual) path to put the typescript declaration of a
+ * GraphQL query file.
+ *
+ * @param {string} path
+ * Relative path of the original GraphQL file
+ * @param {string} virtualBase
+ * Relative path of the virtual base directory
+ * @returns
+ * The path of the virtual declaration file.
+ */
+export function virtualDeclarationPath(path, virtualBase) {
+	const extension = extname(path);
+	const newPath = path.slice(0, -extension.length) + `.d${extension}.ts`;
+	//TODO: Is it safe to always assume relative paths here?
+	return join(virtualBase, newPath);
+}
+
+/**
+ * Wraps a promise in a timeout. If the timeout is reached before the promise
+ * resolves, the promise rejects with the provided reason.
+ *
+ * @template T
+ * @param {Promise<T>} promise
+ * The promise to wrap in a timeout.
+ * @param {number} ms
+ * Number of milliseconds before the timeout kicks in.
+ * @param {string} reason
+ * The reason provided if rejecting due to timeout. Default: "Timeout".
+ * @returns {Promise<T>}
+ * A new promise that resolves as normally within the given time limit,
+ * but rejects if the time limit is exceeded.
+ */
+export function promiseWithTimeout(promise, ms, reason = "Timeout") {
+	const timeoutPromise = new Promise((_, reject) =>
+		setTimeout(() => reject(reason), ms)
+	);
+	return Promise.race([promise, timeoutPromise]);
+}
+
+/**
+ * No operation function
+ */
+export function noop() {}
 
 /**
  * @param {import("graphql").DefinitionNode} definition

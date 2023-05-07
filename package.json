@@ -37,8 +37,8 @@
 		"@graphql-codegen/typescript-operations": "^3.0.4",
 		"@graphql-tools/load": "^7.8.14",
 		"@graphql-typed-document-node/core": "^3.2.0",
+		"chokidar": "^3.5.3",
 		"esbuild": "^0.17.18",
-		"fast-glob": "^3.2.12",
 		"graphql": "^16.6.0"
 	},
 	"devDependencies": {

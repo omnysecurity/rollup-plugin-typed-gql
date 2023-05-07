@@ -1,17 +1,18 @@
-import glob from "fast-glob";
-import { mkdir, readFile, writeFile } from "fs/promises";
-import { dirname, join, relative } from "path";
-import { normalizePath } from "vite";
+import { FSWatcher } from "chokidar";
+import { mkdir, readFile, rm, unlink, writeFile } from "fs/promises";
+import { dirname, resolve } from "path";
 import {
-	queryToTypeDeclaration,
 	loadSchema,
+	noop,
+	promiseWithTimeout,
 	queryToDocumentNode,
+	queryToTypeDeclaration,
+	virtualDeclarationPath,
 } from "./helpers.js";
-
-export * from "./helpers.js";
+import { GraphQLError } from "graphql";
+import { normalizePath } from "vite";
 
 // TODO: Add best practices options
-// TODO: Use chokidar to watch .gql files (https://github.com/paulmillr/chokidar)
 
 /**
  * Vite Plugin for type safe use of imported GraphQL queries.
@@ -19,49 +20,83 @@ export * from "./helpers.js";
  * @returns {import("vite").Plugin}
  */
 export default async function vitePluginTypedGql() {
-	const virtualDir = ".gql";
+	const virtualBase = ".gql";
 	const extension = ".gql";
-	const schemaPath = normalizePath("./schema.graphql");
-	let schema = await loadSchema(schemaPath);
 	const cwd = process.cwd();
+	const schemaPath = "./schema.graphql";
+
+	/** @type {import("graphql").DocumentNode} */
+	let schema;
+	const watcher = new FSWatcher({ cwd });
+	const initialGeneration = new Promise((resolve, reject) => {
+		watcher.on("ready", resolve);
+		watcher.on("error", reject);
+	});
 
 	/** @type {(path: string) => Promise<void>} */
 	const generateTypeDeclaration = async (path) => {
 		const fileContent = await readFile(path, "utf-8");
 		const declaration = await queryToTypeDeclaration(fileContent, schema);
-		//TODO: Is it safe to always assume relative paths here?
-		const pathWithoutExtension = path.slice(0, -extension.length);
-		const outputFilePath =
-			join(virtualDir, pathWithoutExtension) + `.d${extension}.ts`;
-		await mkdir(dirname(outputFilePath), { recursive: true });
-		return writeFile(outputFilePath, declaration);
+		const outputPath = virtualDeclarationPath(path, virtualBase);
+		await mkdir(dirname(outputPath), { recursive: true });
+		await writeFile(outputPath, declaration);
 	};
 
 	return {
 		name: "vite-plugin-typed-gql",
+
 		async buildStart() {
-			const gqlFiles = await glob(`src/**/*${extension}`);
-			// TODO: Rewrite to allSettled to improve error handling
-			await Promise.all(
-				gqlFiles
-					.map(normalizePath)
-					.filter((path) => path !== schemaPath)
-					.map(generateTypeDeclaration)
-			);
+			schema = await loadSchema(schemaPath);
+			await rm(resolve(cwd, virtualBase), { recursive: true }).catch(noop);
+			watcher
+				.add(`src/**/*${extension}`)
+				.on("add", (path) =>
+					generateTypeDeclaration(path).catch(() =>
+						this.warn(`Failed to parse GQL file: ${path}`)
+					)
+				);
+			if (this.meta.watchMode)
+				watcher
+					.on("change", (path) =>
+						generateTypeDeclaration(path).catch(() =>
+							this.warn(`Failed to parse GQL file: ${path}`)
+						)
+					)
+					.on("unlink", (path) =>
+						unlink(virtualDeclarationPath(path)).catch(noop)
+					);
 		},
 
 		async transform(code, id) {
 			if (!id.endsWith(extension)) return null;
-			const documentNodeFile = await queryToDocumentNode(code, schema);
+			const documentNodeFile = await queryToDocumentNode(code, schema).catch(
+				(err) => {
+					let reason = "Unknown error";
+					if (err instanceof GraphQLError) {
+						reason = err.message;
+					}
+					this.warn(`Failed to parse "${normalizePath(id)}": ${reason}`);
+					return `throw new Error("Failed to parse GQL file.")`;
+				}
+			);
+			// TODO: sourcemaps?
 			return { code: documentNodeFile, map: { mappings: "" } };
 		},
 
-		async handleHotUpdate(ctx) {
-			if (!ctx.file.endsWith(extension)) return null;
-			const path = normalizePath(relative(cwd, ctx.file));
-			// TODO: Handle schema changes
-			if (path.endsWith(schemaPath)) return;
-			await generateTypeDeclaration(path);
+		async buildEnd() {
+			try {
+				await promiseWithTimeout(
+					initialGeneration,
+					2000,
+					"Timed out while generating type declarations for GraphQL queries."
+				);
+			} catch (err) {
+				console.error(err);
+			} finally {
+				await watcher.close();
+			}
 		},
 	};
 }
+
+export * from "./helpers.js";
