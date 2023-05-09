@@ -1,0 +1,236 @@
+import { codegen } from "@graphql-codegen/core";
+import * as typedDocumentNodePlugin from "@graphql-codegen/typed-document-node";
+import * as typescriptPlugin from "@graphql-codegen/typescript";
+import * as typescriptOperationsPlugin from "@graphql-codegen/typescript-operations";
+import { loadDocuments } from "@graphql-tools/load";
+import { transform } from "esbuild";
+import { mkdir, readFile, rm, writeFile } from "fs/promises";
+import { Kind } from "graphql";
+import { dirname, extname, join, relative, resolve } from "path";
+import { normalizePath } from "vite";
+import { noop } from "./helpers.js";
+
+export class GqlDeclarationWriter {
+	/**
+	 * @param {import("graphql").DocumentNode} schema
+	 * GraphQL schema to base type declaration on.
+	 * @param {Record<string, string>} scalars
+	 * Custom scalars. Default: `{}`
+	 * @param {string} basePath
+	 * Path to base directory. Default: `process.cwd()`.
+	 */
+	static async initialize(schema, scalars = {}, basePath = process.cwd()) {
+		const virtualDir = resolve(basePath, ".gql");
+		const outDir = join(virtualDir, "types");
+		// Make sure we start fresh
+		await rm(virtualDir, { recursive: true }).catch(noop);
+		await mkdir(outDir, { recursive: true });
+		// Generate and store type declarations from schema
+		const schemaDeclaration = await schemaToTypeDeclaration(schema, scalars);
+		const schemaDeclarationPath = join(virtualDir, "schema.d.ts");
+		await writeFile(schemaDeclarationPath, schemaDeclaration);
+		// Extract schema types
+		const schemaTypes = extractNamedTypeExports(schemaDeclaration);
+
+		return new GqlDeclarationWriter(
+			schema,
+			schemaTypes,
+			schemaDeclarationPath,
+			outDir,
+			scalars
+		);
+	}
+
+	/**
+	 * @param {string} path
+	 */
+	async writeQueryDeclaration(path) {
+		const outputPath = this.virtualPath(path);
+		const { src, documentNode } = await this.parseQuery(path);
+
+		// The imports needed (TypedDocumentNode + all schema types)
+		const typedDocumentNodeImport = `import type { TypedDocumentNode } from "@graphql-typed-document-node/core";`;
+		const schemaTypesImport = `import type {${this.schemaTypes.join(
+			", "
+		)}} from "${normalizePath(
+			relative(dirname(outputPath), this.schemaDeclarationPath)
+		)}";`;
+
+		// Generate exports for all the TypedDocumentNodes (queries and mutations)
+		const exports =
+			documentNode?.definitions
+				.filter(isGraphQLOperationDefinition)
+				.map((od) => od.name?.value)
+				.filter(isNotNullish)
+				.map(
+					(d) =>
+						`export declare const ${d}: TypedDocumentNode<${d}Query, ${d}QueryVariables>;`
+				)
+				.join("\n") || "";
+
+		// Stitch together the type declaration content
+		const queryDeclaration = [
+			typedDocumentNodeImport, // Importing the TypedDocumentNode type
+			schemaTypesImport, // Importing types from the schema we need (and don't)
+			src, // Query inputs and outputs + fragments
+			exports, // TypedDocumentNodes
+			"export{};", // Prevent everything from being implicitly exported
+		].join("\n");
+
+		// Make sure the folders exist
+		await mkdir(dirname(outputPath), { recursive: true });
+		// Write the file
+		await writeFile(outputPath, queryDeclaration);
+	}
+
+	/**
+	 * @param {string} path
+	 */
+	async removeQueryDeclaration(path) {
+		const declarationPath = this.virtualPath(path);
+		await rm(declarationPath).catch(noop);
+	}
+
+	/**
+	 * @param {string} src
+	 */
+	async queryToJs(src) {
+		const [documentSource] = await loadDocuments(src, { loaders: [] });
+		const code = await codegen({
+			documents: [documentSource],
+			schema: this.schema,
+			config: {
+				scalars: this.scalars,
+			},
+			filename: "./node_modules/.generated.ts",
+			plugins: [
+				{
+					typedDocumentNode: {
+						useTypeImports: true,
+						documentVariableSuffix: "",
+						fragmentVariableSuffix: "",
+					},
+				},
+			],
+			pluginMap: { typedDocumentNode: typedDocumentNodePlugin },
+		});
+
+		const transformed = await transform(code, { loader: "ts" });
+		return transformed.code;
+	}
+
+	/**
+	 * @private
+	 * @param {import("graphql").DocumentNode} schema
+	 * @param {string[]} schemaTypes
+	 * @param {string} schemaDeclarationPath
+	 * @param {string} outDir
+	 * @param {Record<string, string>} scalars
+	 */
+	constructor(schema, schemaTypes, schemaDeclarationPath, outDir, scalars) {
+		/** @private */
+		this.schema = schema;
+		/** @private */
+		this.schemaTypes = schemaTypes;
+		/** @private */
+		this.schemaDeclarationPath = schemaDeclarationPath;
+		/** @private */
+		this.outDir = outDir;
+		/** @private */
+		this.scalars = scalars;
+	}
+
+	/**
+	 * @private
+	 * @param {string} path Relative path
+	 */
+	virtualPath(path) {
+		const extension = extname(path);
+		return join(
+			this.outDir,
+			path.slice(0, -extension.length) + `.d${extension}.ts`
+		);
+	}
+
+	/**
+	 * @private
+	 * @param {string} path
+	 */
+	async parseQuery(path) {
+		const fileContent = await readFile(path, "utf-8");
+		const [documentSource] = await loadDocuments(fileContent, { loaders: [] });
+		const typeDeclaration = await codegen({
+			documents: [documentSource],
+			schema: this.schema,
+			config: {
+				scalars: this.scalars,
+			},
+			filename: "./node_modules/.generated.ts",
+			plugins: [
+				{
+					typescriptOperations: {
+						arrayInputCoercion: false,
+						defaultScalarType: "unknown",
+					},
+				},
+			],
+			pluginMap: { typescriptOperations: typescriptOperationsPlugin },
+		});
+
+		return { src: typeDeclaration, documentNode: documentSource.document };
+	}
+}
+
+/**
+ * @param {import("graphql").DocumentNode} schema
+ * @param {Record<string, string>} scalars
+ */
+async function schemaToTypeDeclaration(schema, scalars) {
+	return codegen({
+		documents: [],
+		schema,
+		config: {
+			scalars,
+		},
+		filename: "./node_modules/.generated.ts",
+		plugins: [
+			{
+				typescript: {
+					arrayInputCoercion: false,
+					defaultScalarType: "unknown",
+				},
+			},
+		],
+		pluginMap: { typescript: typescriptPlugin },
+	});
+}
+
+/**
+ * @param {string} src
+ */
+function extractNamedTypeExports(src) {
+	/** @type {string[]} */
+	const namedExports = [];
+	const matches = src.matchAll(/export type (\w+)/gm);
+	for (const match of matches) {
+		namedExports.push(match[1]);
+	}
+	return namedExports;
+}
+
+/**
+ * @param {import("graphql").DefinitionNode} definition
+ * @returns {definition is import("graphql").OperationDefinitionNode}
+ */
+function isGraphQLOperationDefinition(definition) {
+	return definition.kind === Kind.OPERATION_DEFINITION;
+}
+
+/**
+ * @template T
+ * @param {T | null | undefined} value
+ * @returns {value is T}
+ */
+function isNotNullish(value) {
+	return value !== null && value !== undefined;
+}
