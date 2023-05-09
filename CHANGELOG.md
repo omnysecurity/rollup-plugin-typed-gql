@@ -1,5 +1,11 @@
 # rollup-plugin-typed-gql
 
+## 0.3.0
+
+### Minor Changes
+
+- 7b0a697: Remove custom virtual dir option
+
 ## 0.2.0
 
 ### Minor Changes
