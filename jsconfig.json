@@ -9,6 +9,6 @@
 		"strict": true,
 		"moduleResolution": "NodeNext",
 		"allowArbitraryExtensions": true,
-		"rootDirs": [".", ".svelte-kit/types", ".gql"]
+		"rootDirs": [".", ".svelte-kit/types", ".gql/types"]
 	}
 }

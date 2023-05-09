@@ -40,14 +40,14 @@ export default defineConfig({
 });
 ```
 
-Enable `allowArbitraryExtensions` and add `".gql"` to `rootDirs` in your
+Enable `allowArbitraryExtensions` and add `".gql/types"` to `rootDirs` in your
 `tsconfig.json`:
 
 ```jsonc
 // tsconfig.json
 {
   "compilerOptions": {
-    "rootDirs": [".", ".gql"],
+    "rootDirs": [".", ".gql/types"],
     "allowArbitraryExtensions": true
     // rest of your configuration
   }
@@ -57,7 +57,7 @@ Enable `allowArbitraryExtensions` and add `".gql"` to `rootDirs` in your
 If you use a framework or other tools that also take advantage of typescripts
 `rootDirs` (like SvelteKit), you need to make sure you add their virtual
 folders manually. For SvelteKit this will look like:
-`"rootDirs": [".", ".svelte-kit/types", ".gql"]`.
+`"rootDirs": [".", ".svelte-kit/types", ".gql/types"]`.
 
 ### Recommendations
 
@@ -95,11 +95,6 @@ typedGql({
    * Extension used for your GraphQL files.
    */
   extensions: [".gql", ".graphql"],
-  /**
-   * Directory to store generated type declarations. If you want your type
-   * declarations next to your GraphQL files pass `"."`.
-   */
-  virtualDir: ".gql",
   /**
    * Base directory to search for files.
    */

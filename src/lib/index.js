@@ -1,15 +1,8 @@
 import { FSWatcher } from "chokidar";
-import { mkdir, readFile, rm, unlink, writeFile } from "fs/promises";
-import { dirname, join, resolve } from "path";
-import {
-	loadSchema,
-	noop,
-	promiseWithTimeout,
-	queryToDocumentNode,
-	queryToTypeDeclaration,
-	virtualDeclarationPath,
-} from "./helpers.js";
 import { GraphQLError } from "graphql";
+import { join } from "path";
+import { GqlDeclarationWriter } from "./gql-parser.js";
+import { loadSchema, noop, promiseWithTimeout } from "./helpers.js";
 
 /**
  * @typedef {Object} PluginOptions
@@ -21,9 +14,6 @@ import { GraphQLError } from "graphql";
  * Path to directory to search for GraphQL files. Default "src".
  * @property {`.${string}`[]} [extensions]
  * Extension used for your GraphQL files. Default [".gql", ".graphql"].
- * @property {string} [virtualDir]
- * Directory to store generated type declarations. If you want your type
- * declarations next to your GraphQL files pass ".". Default ".gql".
  * @property {string} [baseDir]
  * Base directory to search for files. Defaults to the current working
  * directory (`process.cwd()`).
@@ -39,12 +29,11 @@ export default function typedGql(options) {
 	const schemaPath = options?.schema ?? "schema.graphql";
 	const scalars = options?.scalars ?? {};
 	const searchDir = options?.searchDir ?? "src";
-	const virtualDir = options?.virtualDir ?? ".gql";
 	const extensions = options?.extensions ?? [".gql", ".graphql"];
 	const cwd = options?.baseDir ?? process.cwd();
 
-	/** @type {import("graphql").DocumentNode} */
-	let schema;
+	/** @type {GqlDeclarationWriter} */
+	let writer;
 	const searchGlobs = extensions.map((ext) => join(searchDir, "**", `*${ext}`));
 	const watcher = new FSWatcher({ cwd, ignored: schemaPath });
 	const initialGeneration = new Promise((resolve, reject) => {
@@ -52,63 +41,41 @@ export default function typedGql(options) {
 		watcher.on("error", reject);
 	});
 
-	/** @type {(path: string) => Promise<void>} */
-	const generateTypeDeclaration = async (path) => {
-		const fileContent = await readFile(path, "utf-8");
-		const declaration = await queryToTypeDeclaration(
-			fileContent,
-			schema,
-			scalars
-		);
-		const outputPath = virtualDeclarationPath(path, virtualDir);
-		await mkdir(dirname(outputPath), { recursive: true });
-		await writeFile(outputPath, declaration);
-	};
-
 	return {
 		name: "rollup-plugin-typed-gql",
 
 		async buildStart() {
-			schema = await loadSchema(schemaPath);
-			await rm(resolve(cwd, virtualDir), { recursive: true }).catch(noop);
+			const schema = await loadSchema(schemaPath);
+			writer = await GqlDeclarationWriter.initialize(schema, scalars, cwd);
 			watcher
 				.add(searchGlobs)
 				.on("add", (path) =>
-					generateTypeDeclaration(path).catch(() =>
-						this.warn(`Failed to parse GQL file: ${path}`)
-					)
+					writer
+						.writeQueryDeclaration(path)
+						.catch(() => this.warn(`Failed to parse GQL file: ${path}`))
+				)
+				.on("change", (path) =>
+					writer
+						.writeQueryDeclaration(path)
+						.catch(() => this.warn(`Failed to parse GQL file: ${path}`))
+				)
+				.on("unlink", (path) =>
+					writer.removeQueryDeclaration(path).catch(noop)
 				);
-			if (this.meta.watchMode)
-				watcher
-					.on("change", (path) =>
-						generateTypeDeclaration(path).catch(() =>
-							this.warn(`Failed to parse GQL file: ${path}`)
-						)
-					)
-					.on("unlink", (path) => {
-						try {
-							const oldPath = virtualDeclarationPath(path);
-							unlink(virtualDeclarationPath(oldPath)).catch(noop);
-						} catch {
-							/* noop */
-						}
-					});
 		},
 
 		async transform(code, id) {
 			if (!extensions.some((ext) => id.endsWith(ext))) return null;
-			const documentNodeFile = await queryToDocumentNode(code, schema).catch(
-				(err) => {
-					let reason = "Unknown error";
-					if (err instanceof GraphQLError) {
-						reason = err.message;
-					}
-					this.warn(`Failed to parse "${id}": ${reason}`);
-					return `throw new Error("Failed to parse GQL file.")`;
+			const js = await writer.queryToJs(code).catch((err) => {
+				let reason = "Unknown error";
+				if (err instanceof GraphQLError) {
+					reason = err.message;
 				}
-			);
+				this.warn(`Failed to parse "${id}": ${reason}`);
+				return `throw new Error("Failed to parse GQL file.")`;
+			});
 			// TODO: sourcemaps?
-			return { code: documentNodeFile, map: { mappings: "" } };
+			return { code: js, map: { mappings: "" } };
 		},
 
 		async buildEnd() {
