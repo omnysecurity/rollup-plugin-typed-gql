@@ -5,7 +5,6 @@ import * as typescriptOperationsPlugin from "@graphql-codegen/typescript-operati
 import { loadDocuments } from "@graphql-tools/load";
 import { transform } from "esbuild";
 import { mkdir, readFile, rm, writeFile } from "fs/promises";
-import { Kind } from "graphql";
 import { dirname, extname, join, relative, resolve } from "path";
 import { normalizePath } from "vite";
 import { noop } from "./helpers.js";
@@ -46,34 +45,22 @@ export class GqlDeclarationWriter {
 	 */
 	async writeQueryDeclaration(path) {
 		const outputPath = this.virtualPath(path);
-		const { src, documentNode } = await this.parseQuery(path);
+		const src = await this.queryToTypeDeclaration(path);
 
-		// The imports needed (TypedDocumentNode + all schema types)
-		const typedDocumentNodeImport = `import type { TypedDocumentNode } from "@graphql-typed-document-node/core";`;
-		const schemaTypesImport = `import type {${this.schemaTypes.join(
+		// find all relevant schema types
+		const relevantSchemaTypes = this.schemaTypes.filter((t) => src.includes(t));
+
+		// The imports we might need from the schema declaration
+		const schemaTypesImport = `import type { ${relevantSchemaTypes.join(
 			", "
-		)}} from "${normalizePath(
+		)} } from "${normalizePath(
 			relative(dirname(outputPath), this.schemaDeclarationPath)
 		)}";`;
 
-		// Generate exports for all the TypedDocumentNodes (queries and mutations)
-		const exports =
-			documentNode?.definitions
-				.filter(isGraphQLOperationDefinition)
-				.map((od) => od.name?.value)
-				.filter(isNotNullish)
-				.map(
-					(d) =>
-						`export declare const ${d}: TypedDocumentNode<${d}Query, ${d}QueryVariables>;`
-				)
-				.join("\n") || "";
-
 		// Stitch together the type declaration content
 		const queryDeclaration = [
-			typedDocumentNodeImport, // Importing the TypedDocumentNode type
-			schemaTypesImport, // Importing types from the schema we need (and don't)
-			src, // Query inputs and outputs + fragments
-			exports, // TypedDocumentNodes
+			schemaTypesImport,
+			src,
 			"export{};", // Prevent everything from being implicitly exported
 		].join("\n");
 
@@ -156,10 +143,10 @@ export class GqlDeclarationWriter {
 	 * @private
 	 * @param {string} path
 	 */
-	async parseQuery(path) {
+	async queryToTypeDeclaration(path) {
 		const fileContent = await readFile(path, "utf-8");
 		const [documentSource] = await loadDocuments(fileContent, { loaders: [] });
-		const typeDeclaration = await codegen({
+		const generated = await codegen({
 			documents: [documentSource],
 			schema: this.schema,
 			config: {
@@ -173,11 +160,26 @@ export class GqlDeclarationWriter {
 						defaultScalarType: "unknown",
 					},
 				},
+				{
+					typedDocumentNode: {
+						useTypeImports: true,
+						documentVariableSuffix: "",
+						fragmentVariableSuffix: "",
+					},
+				},
 			],
-			pluginMap: { typescriptOperations: typescriptOperationsPlugin },
+			pluginMap: {
+				typescriptOperations: typescriptOperationsPlugin,
+				typedDocumentNode: typedDocumentNodePlugin,
+			},
 		});
 
-		return { src: typeDeclaration, documentNode: documentSource.document };
+		const src = generated.replace(
+			/export const (\w+) = .* (DocumentNode<\w+, \w+>);/gm,
+			"export declare const $1: $2;"
+		);
+
+		return src;
 	}
 }
 
@@ -218,19 +220,19 @@ function extractNamedTypeExports(src) {
 	return namedExports;
 }
 
-/**
- * @param {import("graphql").DefinitionNode} definition
- * @returns {definition is import("graphql").OperationDefinitionNode}
- */
-function isGraphQLOperationDefinition(definition) {
-	return definition.kind === Kind.OPERATION_DEFINITION;
-}
+// /**
+//  * @param {import("graphql").DefinitionNode} definition
+//  * @returns {definition is import("graphql").OperationDefinitionNode}
+//  */
+// function isGraphQLOperationDefinition(definition) {
+// 	return definition.kind === Kind.OPERATION_DEFINITION;
+// }
 
-/**
- * @template T
- * @param {T | null | undefined} value
- * @returns {value is T}
- */
-function isNotNullish(value) {
-	return value !== null && value !== undefined;
-}
+// /**
+//  * @template T
+//  * @param {T | null | undefined} value
+//  * @returns {value is T}
+//  */
+// function isNotNullish(value) {
+// 	return value !== null && value !== undefined;
+// }
