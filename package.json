@@ -3,13 +3,13 @@
 	"version": "0.3.0",
 	"type": "module",
 	"description": "Simple, unobtrusive and fully type safe GraphQL plugin.",
-	"homepage": "https://github.com/boyeborg/rollup-plugin-typed-gql#readme",
+	"homepage": "https://github.com/omnysecurity/rollup-plugin-typed-gql#readme",
 	"bugs": {
-		"url": "https://github.com/boyeborg/rollup-plugin-typed-gql/issues"
+		"url": "https://github.com/omnysecurity/rollup-plugin-typed-gql/issues"
 	},
 	"repository": {
 		"type": "git",
-		"url": "https://github.com/boyeborg/rollup-plugin-typed-gql.git"
+		"url": "https://github.com/omnysecurity/rollup-plugin-typed-gql.git"
 	},
 	"license": "MIT",
 	"keywords": [
