@@ -219,20 +219,3 @@ function extractNamedTypeExports(src) {
 	}
 	return namedExports;
 }
-
-// /**
-//  * @param {import("graphql").DefinitionNode} definition
-//  * @returns {definition is import("graphql").OperationDefinitionNode}
-//  */
-// function isGraphQLOperationDefinition(definition) {
-// 	return definition.kind === Kind.OPERATION_DEFINITION;
-// }
-
-// /**
-//  * @template T
-//  * @param {T | null | undefined} value
-//  * @returns {value is T}
-//  */
-// function isNotNullish(value) {
-// 	return value !== null && value !== undefined;
-// }
