@@ -1,5 +1,11 @@
 # rollup-plugin-typed-gql
 
+## 0.3.1
+
+### Patch Changes
+
+- 1af2c2f: move repository to new location
+
 ## 0.3.0
 
 ### Minor Changes
