@@ -12,7 +12,7 @@ import { loadSchema, noop, promiseWithTimeout } from "./helpers.js";
  * Custom scalars. Default {}.
  * @property {string} [searchDir]
  * Path to directory to search for GraphQL files. Default "src".
- * @property {`.${string}`[]} [extensions]
+ * @property {`${string}.${string}`[]} [extensions]
  * Extension used for your GraphQL files. Default [".gql", ".graphql"].
  * @property {string} [baseDir]
  * Base directory to search for files. Defaults to the current working
