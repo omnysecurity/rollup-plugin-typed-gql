@@ -99,5 +99,9 @@ typedGql({
    * Base directory to search for files.
    */
   baseDir: process.cwd(),
+  /**
+   * Time to complete initial generation
+   */
+  startupTimeout: 2000,
 });
 ```
