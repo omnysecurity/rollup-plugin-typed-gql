@@ -17,6 +17,8 @@ import { loadSchema, noop, promiseWithTimeout } from "./helpers.js";
  * @property {string} [baseDir]
  * Base directory to search for files. Defaults to the current working
  * directory (`process.cwd()`).
+ * @property {number} [startupTimeout]
+ * Time to complete initial generation. Default 2000 (ms)
  */
 
 /**
@@ -82,7 +84,7 @@ export default function typedGql(options) {
 			try {
 				await promiseWithTimeout(
 					initialGeneration,
-					2000,
+					options.startupTimeout ?? 2000,
 					"Timed out while generating type declarations for GraphQL queries."
 				);
 			} catch (err) {
