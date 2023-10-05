@@ -1,5 +1,11 @@
 # rollup-plugin-typed-gql
 
+## 0.4.0
+
+### Minor Changes
+
+- 72442f4: Add new optional configuration parameter to allow longer timeout for initial schema generation
+
 ## 0.3.2
 
 ### Patch Changes
