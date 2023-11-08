@@ -36,8 +36,11 @@ export default function typedGql(options) {
 
 	/** @type {GqlDeclarationWriter} */
 	let writer;
-	const searchGlobs = extensions.map((ext) => join(searchDir, "**", `*${ext}`));
-	const watcher = new FSWatcher({ cwd, ignored: schemaPath });
+	const searchGlobs = extensions.map((ext) => join("**", `*${ext}`));
+	const watcher = new FSWatcher({
+		cwd: join(cwd, searchDir),
+		ignored: schemaPath,
+	});
 	const initialGeneration = new Promise((resolve, reject) => {
 		watcher.on("ready", resolve);
 		watcher.on("error", reject);
@@ -49,20 +52,21 @@ export default function typedGql(options) {
 		async buildStart() {
 			const schema = await loadSchema(schemaPath);
 			writer = await GqlDeclarationWriter.initialize(schema, scalars, cwd);
+			let outDirPath = (watcherPath) => join(searchDir, watcherPath);
 			watcher
 				.add(searchGlobs)
 				.on("add", (path) =>
 					writer
-						.writeQueryDeclaration(path)
+						.writeQueryDeclaration(outDirPath(path))
 						.catch(() => this.warn(`Failed to parse GQL file: ${path}`))
 				)
 				.on("change", (path) =>
 					writer
-						.writeQueryDeclaration(path)
+						.writeQueryDeclaration(outDirPath(path))
 						.catch(() => this.warn(`Failed to parse GQL file: ${path}`))
 				)
 				.on("unlink", (path) =>
-					writer.removeQueryDeclaration(path).catch(noop)
+					writer.removeQueryDeclaration(outDirPath(path)).catch(noop)
 				);
 		},
 
