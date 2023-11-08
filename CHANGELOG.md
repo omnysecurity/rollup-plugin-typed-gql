@@ -1,5 +1,11 @@
 # rollup-plugin-typed-gql
 
+## 0.4.1
+
+### Patch Changes
+
+- ff933d3: Fix bug where plugin hangs during concurrent builds of a package.
+
 ## 0.4.0
 
 ### Minor Changes
