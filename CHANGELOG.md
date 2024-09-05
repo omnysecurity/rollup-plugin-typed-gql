@@ -1,5 +1,11 @@
 # rollup-plugin-typed-gql
 
+## 0.5.0
+
+### Minor Changes
+
+- e2523a7: Adds a new `buildOnce` function for one-time type generation without continuously watching the file system for changes
+
 ## 0.4.1
 
 ### Patch Changes
