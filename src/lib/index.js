@@ -33,6 +33,7 @@ export default function typedGql(options) {
 	const searchDir = options?.searchDir ?? "src";
 	const extensions = options?.extensions ?? [".gql", ".graphql"];
 	const cwd = options?.baseDir ?? process.cwd();
+	const outDirPath = (watcherPath) => join(searchDir, watcherPath);
 
 	/** @type {GqlDeclarationWriter} */
 	let writer;
@@ -49,10 +50,37 @@ export default function typedGql(options) {
 	return {
 		name: "rollup-plugin-typed-gql",
 
+		async buildOnce() {
+			const schema = await loadSchema(schemaPath);
+			writer = await GqlDeclarationWriter.initialize(schema, scalars, cwd);
+
+			const tempWatcher = new FSWatcher({
+				cwd: join(cwd, searchDir),
+				ignored: schemaPath,
+				persistent: false, // One-time search
+			});
+
+			await new Promise((resolve, reject) => {
+				tempWatcher
+					.add(searchGlobs)
+					.on("add", (path) =>
+						writer
+							.writeQueryDeclaration(outDirPath(path))
+							.catch(() => this.warn(`Failed to parse GQL file: ${path}`))
+					)
+					.on("ready", () => {
+						tempWatcher.close();
+						resolve();
+					})
+					.on("error", reject);
+			});
+
+			await writer.cleanup();
+		},
+
 		async buildStart() {
 			const schema = await loadSchema(schemaPath);
 			writer = await GqlDeclarationWriter.initialize(schema, scalars, cwd);
-			let outDirPath = (watcherPath) => join(searchDir, watcherPath);
 			watcher
 				.add(searchGlobs)
 				.on("add", (path) =>
