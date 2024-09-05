@@ -1,5 +1,11 @@
 # rollup-plugin-typed-gql
 
+## 0.5.1
+
+### Patch Changes
+
+- b952228: fix buildOnce function
+
 ## 0.5.0
 
 ### Minor Changes
