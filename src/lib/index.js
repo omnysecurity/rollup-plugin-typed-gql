@@ -74,8 +74,6 @@ export default function typedGql(options) {
 					})
 					.on("error", reject);
 			});
-
-			await writer.cleanup();
 		},
 
 		async buildStart() {
